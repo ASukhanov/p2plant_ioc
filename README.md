@@ -1,7 +1,7 @@
 # EPICS softIocPVA for P2Plant devices
 
 # Example
-Start P2Plant of simulated 8-channel ADC as described in P2Plant.
+Start P2Plant of simulated 8-channel ADC as described in [P2Plant](https://github.com/ASukhanov/P2Plant).
 
 Run softIocPVA:<br>
 ```
