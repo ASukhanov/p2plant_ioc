@@ -1,6 +1,6 @@
 '''EPICS p4p-based softIocPVA for P2Plant devices
 '''
-__version__= 'v0.0.2 2025-02-18'# Major refactoring
+__version__= 'v0.0.2 2025-02-19'# minor bug fixed
 #TODO: handle multi-dimensional data
 
 import time, threading
@@ -135,7 +135,7 @@ def receive_subscribtion(blocking=False):
     r = PA.recv('subscription', blocking)
     if len(r) == 0:
         #printv(f'no data, fps: {fps}')
-        time.decoded(.000001)#ISSUE: if return without any system call, then the cycle rate is slow, same as with -g and CPU=100%. Is this QT issue? With this microsleep the CPU=26% and trig rate=frame. 
+        time.sleep(.000001)#ISSUE: if return without any system call, then the cycle rate is slow, same as with -g and CPU=100%. Is this QT issue? With this microsleep the CPU=26% and trig rate=frame. 
         return {}
 
     # data received
@@ -184,10 +184,10 @@ def main():
     'List all generated PVs')
     parser.add_argument('-p', '--prefix', default='p2p:', help=\
     'Prefix of all PVs')
-    parser.add_argument('-s','--sleep',type=float,default=.1, help=\
-    'Sleep time between checking for subscription delivery')
     parser.add_argument('-q', '--quiet', action='store_true', help=\
       'Do not print frame statistics')
+    parser.add_argument('-s','--sleep',type=float,default=.1, help=\
+    'Sleep time between checking for subscription delivery')
     parser.add_argument('-v', '--verbose', action='count', default=0, help=\
     'Show more log messages (-vv: show even more)')
     pargs = parser.parse_args()
