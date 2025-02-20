@@ -1,6 +1,6 @@
 '''EPICS p4p-based softIocPVA for P2Plant devices
 '''
-__version__= 'v0.0.2 2025-02-19'# minor bug fixed
+__version__= 'v0.0.3 2025-02-20'# threadless
 #TODO: handle multi-dimensional data
 
 import time, threading
@@ -36,8 +36,8 @@ typeCode = {#'F64':'d',  'F32':'f',
 def set_run(vntenum):
     idx = vntenum.raw.value.index
     #print(f">set_run {idx}")
-    if idx == 0:# Run
-        threading.Thread(target=threadProc).start()
+    #if idx == 0:# Run
+    #    threading.Thread(target=threadProc).start()
 
 def makeNTScalar(key:str):
     prefix = ''
@@ -116,7 +116,7 @@ def create_PVs():
 #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 lasttime = time.time()
 fps = 0
-def receive_subscribtion(blocking=False):
+def receive_subscription(blocking=False):
     global lasttime,fps
     ct = time.time()
     printInterval = 10#s
@@ -146,11 +146,11 @@ def receive_subscribtion(blocking=False):
         printv(f'decoded: {decoded}')
     return decoded
 
-def myThread_proc():
+def mainLoop():
+    """ Receive subscriptions from P2Plant and post PVs"""
     threads = 0
     cycle = 0
-    printi('Run started')
-    print(f'pargs: {pargs}')
+    printi('========== mainLoop have started ==========')
     while not EventExit.is_set():
         cycle += 1
         printv(f'cycle {cycle}')
@@ -159,7 +159,7 @@ def myThread_proc():
         ts = time.time()
         PVs[pargs.prefix+'cycle'].post(cycle, timestamp=ts)
 
-        r = receive_subscribtion()
+        r = receive_subscription()
         for pvname,rd in r.items():
             printv(f'received {pvname}')
             #TODO: handle shape
@@ -199,6 +199,7 @@ def main():
     print(f'P2Plant {r["version"]["v"]}')
     info = PA.request(["info", ["*"]])['*']
     print(f'Attached P2Plant hosts the following PVs: {list(info.keys())}')
+    #print(f'info: {info}')
     PA.request('["set", [["run", "start"]]]')
 
     # Construct PVs
@@ -209,10 +210,14 @@ def main():
         pprint.pp(list(PVs.keys()))
 
     #```````````````The P2Plant seems to be alive`````````````````````````````````
-    threadProc = myThread_proc
-    thread = threading.Thread(target=myThread_proc).start()
+    #threadProc = mainLoop
+    #thread = threading.Thread(target=mainLoop).start()
+    #Server.forever(providers=[PVs]) # runs until KeyboardInterrupt
+    # Start the PVA server
+    Server(providers=[PVs])
 
-    Server.forever(providers=[PVs]) # runs until KeyboardInterrupt
+    # start data receiving and posting
+    mainLoop()
 
 if __name__ == "__main__":
     main()
