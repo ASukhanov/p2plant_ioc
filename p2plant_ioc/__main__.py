@@ -1,6 +1,6 @@
 '''EPICS p4p-based softIocPVA for P2Plant devices
 '''
-__version__= 'v0.0.3 2025-02-20'# threadless
+__version__= 'v0.0.4 2025-02-20'# threadless not working, rolling back.
 #TODO: handle multi-dimensional data
 
 import time, threading
@@ -210,14 +210,15 @@ def main():
         pprint.pp(list(PVs.keys()))
 
     #```````````````The P2Plant seems to be alive`````````````````````````````````
+    # Start the PVA server as a thread
     #threadProc = mainLoop
-    #thread = threading.Thread(target=mainLoop).start()
-    #Server.forever(providers=[PVs]) # runs until KeyboardInterrupt
-    # Start the PVA server
-    Server(providers=[PVs])
+    thread = threading.Thread(target=mainLoop).start()
+    Server.forever(providers=[PVs]) # runs until KeyboardInterrupt
 
+    # Start the PVA server
+    #Server(providers=[PVs])
     # start data receiving and posting
-    mainLoop()
+    #mainLoop()
 
 if __name__ == "__main__":
     main()
