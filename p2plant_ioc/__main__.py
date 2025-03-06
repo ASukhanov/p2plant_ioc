@@ -1,6 +1,6 @@
 '''EPICS p4p-based softIocPVA for P2Plant devices
 '''
-__version__= 'v0.0.4 2025-02-20'# threadless not working, rolling back.
+__version__= 'v1.0.0 2025-03-06'# Setting p2plant is working
 #TODO: handle multi-dimensional data
 
 import time, threading
@@ -61,10 +61,11 @@ def append_PVDefs(info:dict):
     for pvName,inf in info.items():
         printv(f'PV {pvName}: {inf}')
         r = PA.request(['get',[pvName]])[pvName]
-        printv(f'r: {r}')
+        printvv(f'r: {r}')
         shape = r.get('shape',[1])
-        if len(shape) > 1:  continue# skip multi-dimensional arrays for now
-        #if inf['type'] in ('char*'): continue#  skip for now
+        if len(shape) > 1: # skip multi-dimensional arrays for now
+            printw(f'multi-dimensional arrays not supported: {pvName}')
+            continue
         PVDefs.append([pvName, inf['desc'], makeNTScalar(inf['type']),
             r['v'], inf['fbits'], {}])
 
@@ -111,6 +112,9 @@ def create_PVs():
                     pv.setter(vr)
                 if pargs.verbose >= 1:
                     printi(f'putting {pv.name} = {vr}')
+                cmd = f'["set",[["{pv.name}",{vr}]]]'
+                r = PA.request(cmd)
+                printv(f'Requested: {cmd}')
                 pv.post(vr, timestamp=ct) # update subscribers
                 op.done()
 #,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
@@ -140,10 +144,10 @@ def receive_subscription(blocking=False):
 
     # data received
     fps += 1
-    printv(f'data received, fps: {fps}')
+    printvv(f'data received, fps: {fps}')
     decoded = PA.decode()
     if pargs.verbose >= 2:
-        printv(f'decoded: {decoded}')
+        printvv(f'decoded: {decoded}')
     return decoded
 
 def mainLoop():
@@ -153,7 +157,7 @@ def mainLoop():
     printi('========== mainLoop have started ==========')
     while not EventExit.is_set():
         cycle += 1
-        printv(f'cycle {cycle}')
+        printvv(f'cycle {cycle}')
         if str(PVs[pargs.prefix+'Run'].current())!='Run':
             break
         ts = time.time()
@@ -161,9 +165,10 @@ def mainLoop():
 
         r = receive_subscription()
         for pvname,rd in r.items():
-            printv(f'received {pvname}')
+            printvv(f'received {pvname}')
             #TODO: handle shape
-            if len(rd['shape']) > 1:  continue# skip multi-dimensional arrays for now
+            shape = rd.get('shape',[1])
+            if len(shape) > 1:  continue# skip multi-dimensional arrays for now
             PVs[pargs.prefix+pvname].post(rd['v'], timestamp=rd['t'])
 
         EventExit.wait(pargs.sleep)
@@ -200,7 +205,6 @@ def main():
     info = PA.request(["info", ["*"]])['*']
     print(f'Attached P2Plant hosts the following PVs: {list(info.keys())}')
     #print(f'info: {info}')
-    PA.request('["set", [["run", "start"]]]')
 
     # Construct PVs
     append_PVDefs(info)
@@ -213,6 +217,12 @@ def main():
     # Start the PVA server as a thread
     #threadProc = mainLoop
     thread = threading.Thread(target=mainLoop).start()
+
+    #print('sleep before run')
+    #time.sleep(5)
+    print(f'Ask server to start')
+    PA.request('["set", [["run", "start"]]]')
+
     Server.forever(providers=[PVs]) # runs until KeyboardInterrupt
 
     # Start the PVA server
