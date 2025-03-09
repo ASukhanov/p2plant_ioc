@@ -1,6 +1,6 @@
 '''EPICS p4p-based softIocPVA for P2Plant devices
 '''
-__version__= 'v1.0.0 2025-03-06'# Setting p2plant is working
+__version__= 'v1.0.1 2025-03-07'# Setting is working
 #TODO: handle multi-dimensional data
 
 import time, threading
@@ -130,7 +130,10 @@ def receive_subscription(blocking=False):
         if pargs.keep_alive:
             # request something to inform server that I am alive
             r = PA.request('["get", ["perf"]]');
-            txt += f'Perf: {str(r["perf"]["v"])}.'
+            try:
+                txt += f'Perf: {str(r["perf"]["v"])}.'
+            except Exception as e:
+                txt = 'WARNING: Got unexpected value for perf: {}, {e}'
         txt += f' Frame rate: {round(fps/printInterval,3)} Hz.'
         if not pargs.quiet: 
             printi(txt)
@@ -220,8 +223,8 @@ def main():
 
     #print('sleep before run')
     #time.sleep(5)
-    print(f'Ask server to start')
     PA.request('["set", [["run", "start"]]]')
+    print(f'Asked server to start')
 
     Server.forever(providers=[PVs]) # runs until KeyboardInterrupt
 
